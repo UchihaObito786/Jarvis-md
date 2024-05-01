@@ -312,12 +312,11 @@ System({
     return await message.client.sendMessage(message.jid, { document: media, mimetype: mime, fileName: match + "." + ext }, { quoted: message });
 });
 
-
 System({
     pattern: 'rotate ?(.*)',
     fromMe: isPrivate,
     desc: 'rotate image or video in any direction',
-    type: 'media'
+    type: 'converter'
 }, async (message, match) => {
     if (!(message.quoted && (message.reply_message.video || message.reply_message.image))) return await message.reply('*Reply to an image/video*');
     if (!match || !['left', 'right', 'horizontal', 'vertical'].includes(match.toLowerCase())) return await message.reply('*Need rotation type.*\n_Example: .rotate left, right, horizontal, or vertical_');	
@@ -331,4 +330,14 @@ System({
 	message.send(buffer, {}, media.endsWith('.mp4') ? 'video' : 'image');
 	fs.unlinkSync(`rotated.${ext}`);
     });
+});
+
+System({
+    pattern: 'tovv ?(.*)',
+    desc: "convert media to view ones",
+    type: 'converter',
+    fromMe: true
+}, async (message, match) => {
+    if (message.quoted && (message.reply_message.image || message.reply_message.video || message.reply_message.audio)) return await message.client.forwardMessage(message.jid, message.reply_message, { vv: true });   
+    await message.reply("_*Reply to an image, video, or audio to make it viewable*_");
 });
