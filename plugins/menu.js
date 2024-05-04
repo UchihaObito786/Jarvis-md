@@ -41,7 +41,7 @@ System({
         menu += `\n┃  ╰─────────────┈⊷`;
     });
     menu += ` ╰━━━━━━━━━━━┈⊷\n`;
-    menu += `made with 🤍`;
+    menu += `made by *ੈ✩₊˚𝗢𝗯𝗶𝘁𝗼 𝗨𝗰𝗵𝗶𝗵𝗮ྀ࿐`;
     const url = BOT_INFO.split(';')[2];
     if (isUrl(url)) await message.sendFromUrl(url, { caption: menu, gifPlayback: true });
     else await message.send(menu);
@@ -66,7 +66,7 @@ System({
     });
     if (MEDIA_DATA) {
         const [title, body, thumbnail] = MEDIA_DATA.split(";");
-        await message.client.sendMessage(message.jid, { text: menu, contextInfo: { externalAdReply: { title, body, thumbnailUrl: thumbnail, renderLargerThumbnail: true, mediaType: 1, mediaUrl: '', sourceUrl: "https://github.com/Loki-Xer/Jarvis-md", showAdAttribution: true } } });
+        await message.client.sendMessage(message.jid, { text: menu, contextInfo: { externalAdReply: { title, body, thumbnailUrl: thumbnail, renderLargerThumbnail: true, mediaType: 1, mediaUrl: '', sourceUrl: "https://github.com/Obito-xd/Obito-md", showAdAttribution: true } } });
     } else {
         await message.send(menu);
     }
