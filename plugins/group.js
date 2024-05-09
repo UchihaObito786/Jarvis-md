@@ -219,7 +219,7 @@ System({
         await message.send(match, { mentions: participants.map(a => a.id) });
     } 
     else if (message.reply_message.i) {
-        return await message.client.forwardMessage(message.jid, message.reply_message, { contextInfo: { mentionedJid: participants.map(a => a.id) } });
+        return await message.client.forwardMessage(message.jid, message.reply_message.message, { contextInfo: { mentionedJid: participants.map(a => a.id) } });
     } 
     else {
         return await message.reply('*Example :* \n_*tag all*_\n*_tag admin*_\n*_tag text*_\n_*Reply to a message*_');
@@ -454,6 +454,7 @@ System({
     type: "group",
 }, async (message, match) => {
     let formattedResult;
+    if (!message.isGroup) return message.reply("_*This command is for groups only.*_");
     if (!match) return message.reply("*Hey, where's the vote text?* Or you can use: _'vote result'_ or _'vote get'_ to get the result of a vote, _'vote delete'_ to delete a vote message, or _'vote What's your favorite color?;😂|Blue,😟|Red'_ to create a vote.");
     if (match === "delete") {
     if (!message.quoted) return message.reply("_*Reply to a vote message*_");
