@@ -20,15 +20,19 @@ const {
     System,
     isPrivate,
     toAudio,
+    toVideo,
     postJson,
     AddMp3Meta,
     sendUrl,
     getBuffer,
     webpToPng,
     webp2mp4,
-    elevenlabs
+    elevenlabs,
+    removeBg,
+    setData,
+    getData
 } = require("../lib/");
-const { selectStyle } = require("./client/"); 
+const { selectStyle, trim } = require("./client/"); 
 const stickerPackNameParts = config.STICKER_PACKNAME.split(";");
 
 System({
@@ -54,7 +58,7 @@ System({
    var audioResult = await toAudio(await message.reply_message.download());
    const [firstName, author, image] = config.AUDIO_DATA.split(";");
    const aud = await AddMp3Meta(audioResult, await getBuffer(image), { title: firstName, body: author });
-   await message.client.sendMessage(message.jid, { audio: aud, mimetype: "audio/mp4" });
+   await message.reply(aud, { mimetype: "audio/mp4" }, "audio");
 });
 
 
@@ -66,8 +70,7 @@ System({
 }, async (message) => {
    if (!message.reply_message.video) return message.reply("_*Reply to a video*_");
    const buff = await message.reply_message.download();
-   const msg = await message.client.generatPvtMessage(buff);
-   await message.client.forwardMessage(message.jid, msg);
+   await message.reply(buff, { ptv: true }, "video");
 });
 
 System({
@@ -76,7 +79,7 @@ System({
     desc: "audio into wave",
     type: "converter",
 }, async (message) => {
-   if (!message.reply_message?.audio) return await message.reply("_Reply to an audio_");
+   if (!message.quoted || !message.reply_message?.audio && !message.reply_message?.video) return await message.reply("_Reply to an audio/video_");
    let media = await toAudio(await message.reply_message.download());
    return await message.send(media, { mimetype: 'audio/mpeg', ptt: true, quoted: message.data }, "audio");
 });
@@ -238,7 +241,7 @@ System({
    const audioResult = await toAudio(audioBuffer, 'mp4');
    if (match) data = match.split(";");
    data = config.AUDIO_DATA.split(";");
-   await message.client.sendMessage(message.jid, { audio: await AddMp3Meta(audioResult, await getBuffer(data[2]), { title: data[0], body: data[1] }), mimetype: "audio/mp4" });
+   await message.reply(await AddMp3Meta(audioResult, await getBuffer(data[2]), { title: data[0], body: data[1] }), { mimetype: "audio/mp4" }, "audio");
 }});
 
 
@@ -296,27 +299,28 @@ System({
     if (!message.quoted || (!message.reply_message.image && !message.reply_message.audio && !message.reply_message.video)) return message.send("_*Reply to a video/audio/image message!*_");
     const media = await message.reply_message.download()
     const { ext, mime } = await fromBuffer(media);
-    return await message.client.sendMessage(message.jid, { document: media, mimetype: mime, fileName: match + "." + ext }, { quoted: message });
+    return await message.reply(media, { mimetype: mime, fileName: match + "." + ext }, "document");
 });
 
 System({
-    pattern: 'rotate ?(.*)',
-    fromMe: isPrivate,
-    desc: 'rotate image or video in any direction',
-    type: 'converter'
+  pattern: 'rotate ?(.*)',
+  fromMe: isPrivate,
+  desc: 'rotate image or video in any direction',
+  type: 'converter'
 }, async (message, match) => {
-    if (!(message.quoted && (message.reply_message.video || message.reply_message.image))) return await message.reply('*Reply to an image/video*');
-    if (!match || !['left', 'right', 'horizontal', 'vertical'].includes(match.toLowerCase())) return await message.reply('*Need rotation type.*\n_Example: .rotate left, right, horizontal, or vertical_');	
-    const rotateOptions = { left: 'transpose=2', right: 'transpose=1', horizontal: 'hflip', vertical: 'vflip', };
-    const media = await message.reply_message.downloadAndSave();
-    const ext = media.endsWith('.mp4') ? 'mp4' : 'jpg';
-    const ffmpegCommand = `ffmpeg -y -i ${media} -vf "${rotateOptions[match.toLowerCase()]}" rotated.${ext}`;
-    exec(ffmpegCommand, (error, stdout, stderr) => {
-	if (error) return message.reply(`Error during rotation: ${error.message}`);
-   	let buffer = fs.readFileSync(`rotated.${ext}`);
-	message.send(buffer, {}, media.endsWith('.mp4') ? 'video' : 'image');
-	fs.unlinkSync(`rotated.${ext}`);
-    });
+  if (!(message.quoted && (message.reply_message.video || message.reply_message.image))) return await message.reply('*Reply to an image/video*');
+  if (!match || !['left', 'right', 'horizontal', 'vertical'].includes(match.toLowerCase())) return await message.reply('*Need rotation type.*\n_Example: .rotate left, right, horizontal, or vertical_');	
+  const rotateOptions = { left: 'transpose=2', right: 'transpose=1', horizontal: 'hflip', vertical: 'vflip', };
+  const media = await message.reply_message.downloadAndSave();
+  const ext = media.endsWith('.mp4') ? 'mp4' : 'jpg';
+  const ffmpegCommand = `ffmpeg -y -nostdin -i ${media} -vf "${rotateOptions[match.toLowerCase()]}" rotated.${ext}`;
+  exec(ffmpegCommand, (error, stdout, stderr) => {
+    if (error) return message.reply(`Error during rotation: ${error.message}`);
+    let buffer = fs.readFileSync(`rotated.${ext}`);
+    message.send(buffer, {}, media.endsWith('.mp4') ? 'video' : 'image');
+    fs.unlinkSync(`rotated.${ext}`);
+    fs.unlinkSync(media);
+  });
 });
 
 System({
@@ -337,4 +341,49 @@ System({
 }, async (message, match, m) => {
     if (!message.reply_message.i || (!message.reply_message.image && !message.reply_message.video && !message.reply_message.audio && !message.reply_message.sticker)) return await message.reply('*Reply to image,video,audio,sticker*');
     return await sendUrl(message);
+});
+
+
+System({
+    pattern: "rbg", 
+    fromMe: isPrivate,
+    desc: "To remove bg", 
+    type: "converter",
+}, async (m, match) => {
+   if (match && match.includes("key")) {
+        await setData(m.user.id, match.split(":")[1].trim(), "true", "removeBg");
+        return m.reply("*Key added successfully. Now you can use rbg.*");
+    }
+    if (!m.quoted || !m.reply_message.image) return m.reply("*Reply to an image*");
+    const db = await getData(m.user.id);
+    if (!db.removeBg) return await m.send("https://graph.org/file/dc22fb232b0092e6326ec.png", { type: "image", value: [{ name: "cta_url", display_text: "Sign in", url: "https://accounts.kaleido.ai/users/sign_in", merchant_url: "https://accounts.kaleido.ai/users/sign_in", action: "url", icon: "", style: "link" }, { name: "cta_url", display_text: "Get API Key", url: "https://www.remove.bg/dashboard#api-key", merchant_url: "https://www.remove.bg/dashboard#api-key", action: "url", icon: "", style: "link" }], body: "", footer: "*JARVIS-MD*", title: `\nDear user, get an API key to use this command. Sign in to remove.bg and get an API key. After that, use \n\n *${m.prefix} rbg key: _your API key_*\n` }, "button");
+    let buff = await removeBg(await m.reply_message.downloadAndSave(), db.removeBg.message);
+    if(!buff) return m.reply("*Error in api key or can't upload to remove.bg*");
+    await m.reply(buff, {}, "image");
+});
+
+
+System({
+    pattern: "trim",
+    fromMe: isPrivate,
+    desc: "to trim audio/video",
+    type: "converter",
+}, async (m, text) => {
+    if (!m.quoted || (!m.reply_message.audio && !m.reply_message.video)) return m.reply("*Reply to a video/audio e.g. _.trim 1.0,3.0*");
+    if (!text) return m.reply("*Need query to trim e.g.: _.trim 1.0,3.0*");
+    const parts = text.split(',');
+    const numberRegex = /^-?\d+(\.\d+)?$/;
+    const areValidNumbers = parts.every(part => numberRegex.test(part));
+    if (!areValidNumbers) return m.reply("*Please check your format. The correct format is .trim 1.0,3.0*");
+    if (m.reply_message.video) {
+        const file = await m.reply_message.download();
+        const output = await trim(file, parts[0], parts[1]);
+        if (!output) return m.reply("*Please check your format. The correct format is .trim 1.0,3.0*"); 
+        await m.reply(output, {}, "video");
+    } else if (m.reply_message.audio) {
+        const file = await toVideo(await m.reply_message.downloadAndSave());
+        const output = await trim(file, parts[0], parts[1]);
+        if (!output) return m.reply("*Please check your format. The correct format is .trim 1.0,3.0*");
+        await m.reply(output, { mimetype: "audio/mp4" }, "audio");
+    }
 });

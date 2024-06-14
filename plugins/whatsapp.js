@@ -1,63 +1,62 @@
 /*------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
 Copyright (C) 2023 Loki - Xer.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-Jarvis - Loki-Xer 
-
+Licensed under the GPL-3.0 License; you may not use this file except in compliance with the License.
+Jarvis - Loki-Xer
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 const { System } = require("../lib");
-
+const { parsedJid } = require("./client/");
 
 System({
-	pattern: "setpp",
-	fromMe: true,
-	desc: "Set profile picture",
-	type: "whatsapp",
+    pattern: "setpp",
+    fromMe: true,
+    desc: "Set profile picture",
+    type: "whatsapp",
 }, async (message) => {
-	if (!message.reply_message.image)
-	return await message.reply("_Reply to a photo_");
-	let buff = await message.reply_message.download();
-	await message.setPP(message.user.jid, buff);
-	return await message.reply("_Profile Picture Updated_");
+    if (!message.reply_message || !message.reply_message.image)
+        return await message.reply("_Reply to a photo_");
+    let buff = await message.reply_message.download();
+    await message.setPP(message.user.jid, buff);
+    return await message.reply("_Profile Picture Updated_");
 });
 
 System({
     pattern: "jid",
     fromMe: true,
-    desc: "Give jid of chat/user",
+    desc: "Give JID of chat/user",
     type: "whatsapp",
-}, async (message, match) => {
-    let jid = message.quoted ? message.reply_message.sender : message.jid;
+}, async (message) => {
+    let jid = message.quoted && message.reply_message.i ? message.reply_message.sender : message.jid;
     return await message.send(jid);
 });
 
 System({
-	pattern: "pp$",
-	fromMe: true,
-	desc: "Set full screen profile picture",
-	type: "whatsapp",
+    pattern: "pp$",
+    fromMe: true,
+    desc: "Set full screen profile picture",
+    type: "whatsapp",
 }, async (message, match) => {
-	if (!message.reply_message.image)
-	return await message.reply("_Reply to a photo_");
-	let media = await message.reply_message.download();
-	await message.client.updateProfile(media, message.user.jid);
-	return await message.reply("_Profile Picture Updated_");
+    if (match === "remove") {
+        await message.client.removeProfilePicture(message.user.jid);
+        return await message.reply("_Profile Picture Removed_");
+    }
+    if (!message.reply_message || !message.reply_message.image) return await message.reply("_Reply to a photo_");
+    let media = await message.reply_message.download();
+    await message.client.updateProfile(media, message.user.jid);
+    return await message.reply("_Profile Picture Updated_");
 });
-
 
 System({
     pattern: "dlt",
     fromMe: true,
-    desc: "deletes a message",
+    desc: "Deletes a message",
     type: "whatsapp",
 }, async (message) => {
-    await message.client.sendMessage(message.chat, { delete: message.reply_message });
+    if (!message.reply_message) return await message.reply("_Reply to a message to delete it_");
+    await message.client.sendMessage(message.chat, { delete: message.reply_message.data.key });
 });
-
 
 System({
 	pattern: 'clear ?(.*)',
@@ -138,23 +137,23 @@ System({
 System({
     pattern: "block",
     fromMe: true,
-    desc: "block a user",
+    desc: "Block a user",
     type: "whatsapp",
-}, async (message, match) => {
-   let jid = message.quoted ? message.reply_message.sender : message.jid;
-   await message.client.updateBlockStatus(jid, "block");
-   return await message.reply("_*blocked*_");
+}, async (message) => {
+    let jid = message.quoted ? message.reply_message.sender : message.jid;
+    await message.client.updateBlockStatus(jid, "block");
+    await message.reply("_*Blocked*_");
 });
 
 System({
     pattern: "unblock",
     fromMe: true,
-    desc: "block a user",
+    desc: "Unblock a user",
     type: "whatsapp",
-}, async (message, match) => {
+}, async (message) => {
     let jid = message.quoted ? message.reply_message.sender : message.jid;
-    return await message.client.updateBlockStatus(message.reply_message.sender, "unblock");
-    return await message.reply("_*unblocked*_");
+    await message.client.updateBlockStatus(jid, "unblock");
+    await message.reply("_*Unblocked*_");
 });
 
 System({
@@ -170,13 +169,135 @@ System({
 });
 
 System({
-	pattern: 'setname ?(.*)',
-	fromMe: true,
-	desc: 'To change your profile name',
-	type: 'whatsapp'
+    pattern: 'setname ?(.*)',
+    fromMe: true,
+    desc: 'To change your profile name',
+    type: 'whatsapp'
 }, async (message, match) => {
-	match = match || message.reply_message.text;
-	if (!match) return await message.send('*Need Name!*\n*Example: setname your name*.');
-	await message.client.updateProfileName(match);
-	await message.send('_Profile name updated_');
+    match = match || message.reply_message.text;
+    if (!match) return await message.send('*Need Name!*\n*Example: setname your name*.');
+    await message.client.updateProfileName(match);
+    await message.send('_Profile name updated_');
+});
+
+System({
+    pattern: "forward",
+    fromMe: true,
+    desc: "Forwards the replied message",
+    type: "whatsapp",
+}, async (message, match) => {
+    if (!message.quoted) return await message.reply('Reply to message');
+    if (!match) return await message.reply("*Provide a JID; use 'jid' command to get JID*");
+    let jids = parsedJid(match);
+    for (let jid of jids) {
+        await message.client.forwardMessage(jid, message.reply_message.message);
+    }
+    await message.reply("_Message forwarded_");
+});
+
+System({
+    pattern: 'caption ?(.*)',
+    fromMe: true,
+    desc: 'Change video or image caption',
+    type: 'whatsapp',
+}, async (message, match) => {
+    if (!message.quoted || (!message.reply_message.video && !message.reply_message.image)) return await message.reply('*_Reply to an image or video_*');
+    if (!match) return await message.reply("*Need a query, e.g., .caption Hello*");
+    await message.client.forwardMessage(message.jid, message.reply_message.message, { caption: match });
+});
+
+System({
+	pattern: 'getprivacy ?(.*)',
+	fromMe: true,
+	desc: 'get your privacy settings',
+	type: 'privacy'
+}, async (message, match) => {
+	const { readreceipts, profile, status, online, last, groupadd, calladd } = await message.client.fetchPrivacySettings(true);
+	const msg = `*♺ my privacy*\n\n*ᝄ name :* ${message.client.user.name}\n*ᝄ online:* ${online}\n*ᝄ profile :* ${profile}\n*ᝄ last seen :* ${last}\n*ᝄ read receipt :* ${readreceipts}\n*ᝄ about seted time :*\n*ᝄ group add settings :* ${groupadd}\n*ᝄ call add settings :* ${calladd}`;
+	let img = await message.client.profilePictureUrl(message.user.jid, 'image').catch(() => "https://i.ibb.co/sFjZh7S/6883ac4d6a92.jpg");
+	await message.send(img, { caption: msg }, 'image');
+});
+
+
+System({
+	pattern: 'lastseen ?(.*)',
+	fromMe: true,
+	desc: 'to change lastseen privacy',
+	type: 'privacy'
+}, async (message, match) => {
+	if (!match) return await message.send(`_*Example:-* ${cmd} all_\n_to change last seen privacy settings_`);
+	const available_privacy = ['all', 'contacts', 'contact_blacklist', 'none'];
+	if (!available_privacy.includes(match)) return await message.send(`_action must be *${available_privacy.join('/')}* values_`);
+	await message.client.updateLastSeenPrivacy(match)
+	await message.send(`_Privacy settings *last seen* Updated to *${match}*_`);
+});
+
+
+System({
+	pattern: 'online ?(.*)',
+	fromMe: true,
+	desc: 'to change online privacy',
+	type: 'privacy'
+}, async (message, match) => {
+	if (!match) return await message.send(`_*Example:-* ${cmd} all_\n_to change *online*  privacy settings_`);
+	const available_privacy = ['all', 'match_last_seen'];
+	if (!available_privacy.includes(match)) return await message.send(`_action must be *${available_privacy.join('/')}* values_`);
+	await message.client.updateOnlinePrivacy(match)
+	await message.send(`_Privacy Updated to *${match}*_`);
+});
+
+
+System({
+	pattern: 'mypp ?(.*)',
+	fromMe: true,
+	desc: 'privacy setting profile picture',
+	type: 'privacy'
+}, async (message, match) => {
+	if (!match) return await message.send(`_*Example:-* ${cmd} all_\n_to change *profile picture*  privacy settings_`);
+	const available_privacy = ['all', 'contacts', 'contact_blacklist', 'none'];
+	if (!available_privacy.includes(match)) return await message.send(`_action must be *${available_privacy.join('/')}* values_`);
+	await message.client.updateProfilePicturePrivacy(match)
+	await message.send(`_Privacy Updated to *${match}*_`);
+});
+
+
+System({
+	pattern: 'mystatus ?(.*)',
+	fromMe: true,
+	desc: 'privacy for my status',
+	type: 'privacy'
+}, async (message, match) => {
+	if (!match) return await message.send(`_*Example:-* ${cmd} all_\n_to change *status*  privacy settings_`);
+	const available_privacy = ['all', 'contacts', 'contact_blacklist', 'none'];
+	if (!available_privacy.includes(match)) return await message.send(`_action must be *${available_privacy.join('/')}* values_`);
+	await message.client.updateStatusPrivacy(match)
+	await message.send(`_Privacy Updated to *${match}*_`);
+});
+
+
+System({
+	pattern: 'read ?(.*)',
+	fromMe: true,
+	desc: 'privacy for read message',
+	type: 'privacy'
+}, async (message, match) => {
+	if (!match) return await message.send(`_*Example:-* ${cmd} all_\n_to change *read and receipts message*  privacy settings_`);
+	const available_privacy = ['all', 'none'];
+	if (!available_privacy.includes(match)) return await message.send(`_action must be *${available_privacy.join('/')}* values_`);
+	await message.client.updateReadReceiptsPrivacy(match)
+	await message.send(`_Privacy Updated to *${match}*_`);
+});
+
+
+System({
+	pattern: 'groupadd ?(.*)',
+	fromMe: true,
+	desc: 'privacy for group add',
+	type: 'privacy'
+}, async (message, match) => {
+	if (!match) return await message.send(`_*Example:-* ${cmd} all_\n_to change *group add*  privacy settings_`);
+	const available_privacy = ['all', 'contacts', 'contact_blacklist', 'none'];
+	if (!available_privacy.includes(match)) return await message.send(`_action must be *${available_privacy.join('/')}* values_`);
+	await message.client.updateGroupsAddPrivacy(match)
+	await message.send(`_Privacy Updated to *${match}*_`);
 });
