@@ -207,12 +207,12 @@ System({
 });
 
 System({
-  pattern: 'playstore ?(.*)',
+  pattern: 'ps ?(.*)',
   fromMe: isPrivate,
   desc: 'Searches for an app on Play Store',
   type: 'search',
 }, async (message, match, m) => {
-  if (!match) return await message.reply("*Nᴇᴇᴅ ᴀɴ ᴀᴘᴘ ɴᴀᴍᴇ*\n*Example.playstore WhatsApp*");
+  if (!match) return await message.reply("*Nᴇᴇᴅ ᴀɴ ᴀᴘᴘ ɴᴀᴍᴇ*\n*Example.ps WhatsApp*");
   const query = match.startsWith('-full')? match.slice(5).trim() : match;
   const x = await fetch(IronMan(`ironman/search/playstore?app=${query}`));
   const result = await x.json();
@@ -228,10 +228,32 @@ System({
     });
   } else {
     const fr = result[0];
-    var caption = `*◦ɴᴀᴍᴇ:* ${fr.name}\n*◦𝙳𝙴𝚅𝙴𝙻𝙾𝙿𝙴𝚁:* ${fr.developer}\n*◦ʀᴀᴛᴇ:* ${fr.rate2}\n*◦ʟɪɴᴋ:* ${fr.link}\n\n*Use -full in front of query to get full results*\n_Example: .playstore -full ${match}_`;
+    var caption = `*◦ɴᴀᴍᴇ:* ${fr.name}\n*◦𝙳𝙴𝚅𝙴𝙻𝙾𝙿𝙴𝚁:* ${fr.developer}\n*◦ʀᴀᴛᴇ:* ${fr.rate2}\n*◦ʟɪɴᴋ:* ${fr.link}\n\n*Use -full in front of query to get full results*\n_Example: .ps -full ${match}_`;
     await message.client.sendMessage(message.chat, {
       image: { url: fr.img },
       caption: caption
     });
   }
+});
+
+System({
+  pattern: 'tt ?(.*)',
+  fromMe: isPrivate,
+  desc: 'TikTok Stalk',
+  type: 'search',
+}, async (message, match) => {
+  if (!match) return await message.send("Need a TikTok username");
+  const response = await fetch(`ironman/stalk/tiktok?id=${encodeURIComponent(match)}`);
+  const data = await response.json();
+  const { user, stats } = data;
+  const caption = `*⭑⭑⭑⭑ᴛɪᴋᴛᴏᴋ ꜱᴛᴀʟᴋ ʀᴇꜱᴜʟᴛ⭑⭑⭑⭑*\n\n`
+    + `*➥ᴜꜱᴇʀɴᴀᴍᴇ:* ${user.uniqueId}\n`
+    + `*➥ɴɪᴄᴋɴᴀᴍᴇ:* ${user.nickname}\n`
+    + `*➥ʙɪᴏ:* ${user.signature}\n`
+    + `*➥ᴠᴇʀɪꜰɪᴇᴅ:* ${user.verified}\n`
+    + `*➥ꜰᴏʟʟᴏᴡᴇʀꜱ:* ${stats.followerCount}\n`
+    + `*➥ꜰᴏʟʟᴏᴡɪɴɢ:* ${stats.followingCount}\n`
+    + `*➥ʜᴇᴀʀᴛꜱ:* ${stats.heartCount}\n`
+    + `*➥ᴠɪᴅᴇᴏꜱ:* ${stats.videoCount}`;
+  await message.client.sendMessage(message.chat, { image: { url: user.avatarLarger }, caption });
 });
