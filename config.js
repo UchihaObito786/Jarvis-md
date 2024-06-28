@@ -14,7 +14,7 @@ const DATABASE_URL = process.env.DATABASE_URL === undefined ? "./database.db" : 
 module.exports = {
   BAN_CHATS: process.env.BAN_CHATS || "",
   PORT: toBool(process.env.PORT) || 8000,
-  AUDIO_DATA: process.env.AUDIO_DATA || '*ੈ✩₊˚𝗢𝗯𝗶𝘁𝗼 𝗨𝗰𝗵𝗶𝗵𝗮ྀ࿐;*ੈ✩₊˚𝗢𝗯𝗶𝘁𝗼 𝗨𝗰𝗵𝗶𝗵𝗮ྀ࿐;https://i.imgur.com/RzxdGxB.jpeg',
+  AUDIO_DATA: process.env.AUDIO_DATA || '*ੈ✩₊˚𝗢𝗯𝗶𝘁𝗼 𝗨𝗰𝗵𝗶𝗵𝗮ྀ࿐;★ σвιтσ-кυη ★;https://i.imgur.com/RzxdGxB.jpeg',
   WARN_COUNT: process.env.WARN_COUNT || '3',
   ALIVE_DATA : process.env.ALIVE_DATA || "_*Hy &sender i am alive now*_\n\n_PLATFORM: &platform_\n_RUNTIME : &runtime_\n\n_. type alive to update your alive message_",
   SESSION_ID: process.env.SESSION_ID || 'Jarvis_dc0d_6c73_8723_f460_6731_bc18_55c3_d33b',
